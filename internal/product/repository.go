@@ -12,8 +12,8 @@ import (
 )
 
 type Repository interface {
-	Create(context.Context, models.Product) error
-	FindOne(string) (models.Product, error)
+	Create(context.Context, models.Product) (int64, error)
+	FindOne(context.Context, int64) (models.Product, error)
 	DecreaseStock(context.Context, models.StockDecreaseLog) error
 	IncreaseStock(context.Context, models.Product) error
 	Exists(context.Context, models.Product) bool
@@ -29,21 +29,21 @@ func NewRepository(con db.Connector) Repository {
 	}
 }
 
-func (r *repository) Create(ctx context.Context, product models.Product) error {
+func (r *repository) Create(ctx context.Context, product models.Product) (int64, error) {
 	exists := r.Exists(ctx, product)
 	if exists {
 		err := r.IncreaseStock(ctx, product)
 		if err != nil {
-			return err
+			return 0, err
 		}
-		return nil
+		return 0, nil
 	}
 
 	r.con.DB.Create(&product)
-	return nil
+	return product.Id, nil
 }
 
-func (r *repository) FindOne(id string) (models.Product, error) {
+func (r *repository) FindOne(ctx context.Context, id int64) (models.Product, error) {
 	product := models.Product{}
 	result := r.con.DB.First(&product, id)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
